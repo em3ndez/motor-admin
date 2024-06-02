@@ -3,7 +3,7 @@
 # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Rails/CreateTableWithTimestamps, Metrics/ClassLength
 class InstallMotorAdmin < ActiveRecord::Migration[7.0]
   def self.up
-    create_table :motor_queries do |t|
+    create_table :motor_queries, if_not_exists: true do |t|
       t.column :name, :string, null: false
       t.column :description, :text
       t.column :sql_body, :text, null: false
@@ -21,7 +21,7 @@ class InstallMotorAdmin < ActiveRecord::Migration[7.0]
               where: 'deleted_at IS NULL'
     end
 
-    create_table :motor_dashboards do |t|
+    create_table :motor_dashboards, if_not_exists: true do |t|
       t.column :title, :string, null: false
       t.column :description, :text
       t.column :preferences, :text, null: false
@@ -38,7 +38,7 @@ class InstallMotorAdmin < ActiveRecord::Migration[7.0]
               where: 'deleted_at IS NULL'
     end
 
-    create_table :motor_forms do |t|
+    create_table :motor_forms, if_not_exists: true do |t|
       t.column :name, :string, null: false
       t.column :description, :text
       t.column :api_path, :text, null: false
@@ -57,7 +57,7 @@ class InstallMotorAdmin < ActiveRecord::Migration[7.0]
               where: 'deleted_at IS NULL'
     end
 
-    create_table :motor_resources do |t|
+    create_table :motor_resources, if_not_exists: true do |t|
       t.column :name, :string, null: false, index: { unique: true }
       t.column :preferences, :text, null: false
 
@@ -66,7 +66,7 @@ class InstallMotorAdmin < ActiveRecord::Migration[7.0]
       t.index :updated_at
     end
 
-    create_table :motor_configs do |t|
+    create_table :motor_configs, if_not_exists: true do |t|
       t.column :key, :string, null: false, index: { unique: true }
       t.column :value, :text, null: false
 
@@ -75,7 +75,7 @@ class InstallMotorAdmin < ActiveRecord::Migration[7.0]
       t.index :updated_at
     end
 
-    create_table :motor_alerts do |t|
+    create_table :motor_alerts, if_not_exists: true do |t|
       t.references :query, null: false, foreign_key: { to_table: :motor_queries }, index: true
       t.column :name, :string, null: false
       t.column :description, :text
@@ -95,7 +95,7 @@ class InstallMotorAdmin < ActiveRecord::Migration[7.0]
               where: 'deleted_at IS NULL'
     end
 
-    create_table :motor_alert_locks do |t|
+    create_table :motor_alert_locks, if_not_exists: true do |t|
       t.references :alert, null: false, foreign_key: { to_table: :motor_alerts }
       t.column :lock_timestamp, :string, null: false
 
@@ -104,7 +104,7 @@ class InstallMotorAdmin < ActiveRecord::Migration[7.0]
       t.index %i[alert_id lock_timestamp], unique: true
     end
 
-    create_table :motor_tags do |t|
+    create_table :motor_tags, if_not_exists: true do |t|
       t.column :name, :string, null: false
 
       t.timestamps
@@ -114,7 +114,7 @@ class InstallMotorAdmin < ActiveRecord::Migration[7.0]
               unique: true
     end
 
-    create_table :motor_taggable_tags do |t|
+    create_table :motor_taggable_tags, if_not_exists: true do |t|
       t.references :tag, null: false, foreign_key: { to_table: :motor_tags }, index: true
       t.column :taggable_id, :bigint, null: false
       t.column :taggable_type, :string, null: false
@@ -124,7 +124,7 @@ class InstallMotorAdmin < ActiveRecord::Migration[7.0]
               unique: true
     end
 
-    create_table :motor_audits do |t|
+    create_table :motor_audits, if_not_exists: true do |t|
       t.column :auditable_id, :string
       t.column :auditable_type, :string
       t.column :associated_id, :string
@@ -141,11 +141,12 @@ class InstallMotorAdmin < ActiveRecord::Migration[7.0]
       t.column :created_at, :datetime
     end
 
-    add_index :motor_audits, %i[auditable_type auditable_id version], name: 'motor_auditable_index'
-    add_index :motor_audits, %i[associated_type associated_id], name: 'motor_auditable_associated_index'
-    add_index :motor_audits, %i[user_id user_type], name: 'motor_auditable_user_index'
-    add_index :motor_audits, :request_uuid
-    add_index :motor_audits, :created_at
+    add_index :motor_audits, %i[auditable_type auditable_id version], name: 'motor_auditable_index', if_not_exists: true
+    add_index :motor_audits, %i[associated_type associated_id], name: 'motor_auditable_associated_index',
+                                                                if_not_exists: true
+    add_index :motor_audits, %i[user_id user_type], name: 'motor_auditable_user_index', if_not_exists: true
+    add_index :motor_audits, :request_uuid, if_not_exists: true
+    add_index :motor_audits, :created_at, if_not_exists: true
 
     model = Class.new(ActiveRecord::Base)
     model.table_name = 'motor_configs'

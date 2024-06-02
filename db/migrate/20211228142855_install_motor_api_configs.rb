@@ -11,8 +11,8 @@ class InstallMotorApiConfigs < ActiveRecord::Migration[7.0]
       serialize :credentials, Motor::HashSerializer
       serialize :preferences, Motor::HashSerializer
 
-      attribute :preferences, default: -> { HashWithIndifferentAccess.new }
-      attribute :credentials, default: -> { HashWithIndifferentAccess.new }
+      attribute :preferences, default: -> { ActiveSupport::HashWithIndifferentAccess.new }
+      attribute :credentials, default: -> { ActiveSupport::HashWithIndifferentAccess.new }
     end
   end
 
@@ -33,7 +33,7 @@ class InstallMotorApiConfigs < ActiveRecord::Migration[7.0]
   end
 
   def up
-    create_table :motor_api_configs do |t|
+    create_table :motor_api_configs, if_not_exists: true do |t|
       t.column :name, :string, null: false
       t.column :url, :string, null: false
       t.column :preferences, :text, null: false

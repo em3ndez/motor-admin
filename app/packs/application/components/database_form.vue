@@ -6,6 +6,18 @@
     @keyup.enter="handleSubmit"
   >
     <FormItem
+      v-if="withName"
+      prop="name"
+      label="Name"
+      class="col-12"
+    >
+      <VInput
+        v-model="dataConfigs.name"
+        type="text"
+        placeholder="Database name"
+      />
+    </FormItem>
+    <FormItem
       prop="url"
       label="URL"
       class="col-12"
@@ -48,6 +60,9 @@
           placeholder="example.com"
           @update:model-value="assignUrl"
         />
+        <small v-if="isError && ['localhost', '0.0.0.0', '127.0.0.1'].includes(dataConfigs.host)">
+          Use <code>`host.docker.internal`</code> on macOS and Windows.
+        </small>
       </FormItem>
       <FormItem
         prop="port"
@@ -136,22 +151,38 @@ export default {
       required: false,
       default: () => ({ protocol: 'postgres' })
     },
+    isDefaultSetup: {
+      type: Boolean,
+      required: false,
+      default: false
+    },
+    withName: {
+      type: Boolean,
+      required: false,
+      default: false
+    },
     submitText: {
       type: String,
       required: false,
       default: 'Submit'
     }
   },
-  emits: ['success', 'error'],
+  emits: ['success', 'error', 'submit'],
   data () {
     return {
+      isError: false,
       isLoading: false,
-      dataConfigs: { ...this.configs }
+      dataConfigs: {}
     }
   },
   computed: {
     rules () {
       return {
+        name: [{
+          required: this.withName,
+          min: 3,
+          max: 10
+        }],
         url: [{ required: true }],
         host: [{ required: true }],
         port: [{ required: true }]
@@ -168,11 +199,20 @@ export default {
   watch: {
     configs () {
       this.dataConfigs = { ...this.configs }
+
+      this.assignFields()
     }
+  },
+  mounted () {
+    this.dataConfigs = { ...this.configs }
+
+    this.assignFields()
   },
   methods: {
     assignFields () {
-      Object.assign(this.dataConfigs, databaseUrlToObject(this.dataConfigs.url))
+      if ('url' in this.dataConfigs) {
+        Object.assign(this.dataConfigs, databaseUrlToObject(this.dataConfigs.url))
+      }
     },
     assignUrl () {
       const { username, protocol, host, password, database, port } = this.dataConfigs
@@ -195,30 +235,19 @@ export default {
       api.post('verify_db_connection', {
         url: this.dataConfigs.url
       }).then(() => {
-        const dbConfig = { name: 'default', url: this.dataConfigs.url.replace('mysql://', 'mysql2://').replace('postgresql://', 'postgres://') }
+        if (this.isDefaultSetup) {
+          this.submitDefault()
+        } else {
+          const dbConfig = { name: this.dataConfigs.name, url: this.dataConfigs.url.replace('mysql://', 'mysql2://').replace('postgresql://', 'postgres://') }
 
-        if (this.dataConfigs.schema_search_path?.match(/\w/)) {
-          dbConfig.schema_search_path = this.dataConfigs.schema_search_path
-        }
-
-        api.post('encrypted_configs', {
-          data: {
-            key: 'database.credentials',
-            value: [dbConfig]
-          }
-        }).then((result) => {
-          this.$emit('success', result.data.data)
-        }).catch((error) => {
-          if (error.response?.data?.errors) {
-            this.$refs.form.setErrors(error.response.data.errors)
-          } else if (error.message) {
-            this.$refs.form.setErrors([error.message])
+          if (this.dataConfigs.schema_search_path?.match(/\w/)) {
+            dbConfig.schema_search_path = this.dataConfigs.schema_search_path
           }
 
-          this.$emit('error', error)
-        }).finally(() => {
+          this.$emit('submit', dbConfig)
+
           this.isLoading = false
-        })
+        }
       }).catch((error) => {
         if (error.response?.data?.errors) {
           this.$refs.form.setErrors(error.response.data.errors)
@@ -228,6 +257,29 @@ export default {
 
         this.$emit('error', error)
 
+        this.isError = true
+        this.isLoading = false
+      })
+    },
+    submitDefault () {
+      api.post('encrypted_configs', {
+        data: {
+          key: 'database.credentials',
+          value: [
+            { name: 'default', url: this.dataConfigs.url, schema_search_path: this.dataConfigs.schema_search_path }
+          ]
+        }
+      }).then((result) => {
+        this.$emit('success', result.data.data)
+      }).catch((error) => {
+        if (error.response?.data?.errors) {
+          this.$refs.form.setErrors(error.response.data.errors)
+        } else if (error.message) {
+          this.$refs.form.setErrors([error.message])
+        }
+
+        this.$emit('error', error)
+      }).finally(() => {
         this.isLoading = false
       })
     },
